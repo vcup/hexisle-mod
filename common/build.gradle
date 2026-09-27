@@ -1,0 +1,45 @@
+// The shared, loader-agnostic half of the mod.
+//
+// This module holds the code that every platform jar compiles into itself. It
+// must not reference Fabric, Quilt, Forge or NeoForge types; loader-specific
+// behaviour is reached through the `HexislePlatform` service seam instead.
+//
+// It is a Loom project purely so the shared sources have a named Minecraft jar
+// to compile against in the IDE. The shared sources are also compiled directly
+// by each platform module (see the root build script), so nothing here is
+// published or shipped on its own.
+
+plugins {
+    id 'dev.architectury.loom'
+}
+
+base {
+    archivesName = "${archives_base_name}-common"
+}
+
+// Nothing in this module is ever launched, so it gets no run configurations.
+loom {
+    runs {
+        removeAll()
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    // Official (Mojang) mappings, matching every platform module.
+    mappings loom.officialMojangMappings()
+
+    // Fabric Loader is compile-only and used solely for the @Environment /
+    // @EnvType annotations, so shared code can mark a class as client-only
+    // without depending on any particular loader.
+    compileOnly "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    compileOnly 'org.jetbrains:annotations:23.0.0'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.6.1'
+}
+
+test {
+    useJUnitPlatform()
+}

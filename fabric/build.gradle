@@ -1,0 +1,62 @@
+// Fabric platform module (Architectury Loom).
+//
+// `loom.platform=fabric` comes from this module's gradle.properties. The shared
+// sources in ../common are compiled into this project by the root build script.
+
+plugins {
+    id 'dev.architectury.loom'
+}
+
+base {
+    archivesName = "${archives_base_name}-fabric"
+}
+
+loom {
+    mixin {
+        defaultRefmapName = "${mod_id}.fabric.refmap.json"
+    }
+
+    runs {
+        client {
+            client()
+            setConfigName('Fabric Client')
+            runDir 'run'
+        }
+        server {
+            server()
+            setConfigName('Fabric Server')
+            runDir 'run-server'
+        }
+        configureEach {
+            ideConfigGenerated(true)
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    // Official (Mojang) mappings, matching every other module: the shared source
+    // set must resolve vanilla names identically in all four compilations.
+    mappings loom.officialMojangMappings()
+
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // ---------------------------------------------------------------------
+    // Hex Casting and its Fabric stack. hexisle is an addon, so shared code
+    // may use at.petrak.hexcasting.api.* from the first commit.
+    // ---------------------------------------------------------------------
+    modImplementation("at.petra-k.hexcasting:hexcasting-fabric-${project.minecraft_version}:${project.hexcasting_version}") {
+        exclude module: 'phosphor'
+        exclude module: 'lithium'
+    }
+    modImplementation "vazkii.patchouli:Patchouli:${project.minecraft_version}-${project.patchouli_version}-FABRIC"
+    modImplementation "me.shedaniel.cloth:cloth-config-fabric:${project.clothconfig_version}"
+
+    // Hex Casting's Fabric build resolves PAUCAL's ingredient types at runtime.
+    modRuntimeOnly "at.petra-k:paucal:0.6.1-pre-7+1.20.1-fabric"
+
+    // MixinExtras ships inside Fabric Loader, but declaring it keeps the compile
+    // classpath explicit for the mixins this module hosts.
+    modImplementation(include("io.github.llamalad7:mixinextras-fabric:${project.mixin_extras_version}"))
+}

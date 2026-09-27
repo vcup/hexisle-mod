@@ -1,0 +1,170 @@
+// Root build script.
+//
+// Four platform artifacts, one shared source set:
+//
+//   common/    loader-agnostic shared code + shared resources
+//   fabric/    Fabric   -> fabric.mod.json
+//   quilt/     Quilt    -> quilt.mod.json
+//   forge/     legacy Forge (net.minecraftforge) -> META-INF/mods.toml
+//   neoforge/  NeoForge -> META-INF/mods.toml
+//
+// Each loader is built with the toolchain that is actually proven for it:
+//
+//   fabric, quilt, neoforge -> Architectury Loom
+//   forge (legacy)           -> ForgeGradle 6
+//
+// Architectury Loom's `ModPlatform` enum covers FABRIC/FORGE/QUILT/NEOFORGE, and
+// its Forge platform is the documented, working way to build against
+// `net.neoforged:forge` on 1.20.1 (Architectury: "Using NeoForge", 1.20.1
+// instructions). Legacy `net.minecraftforge:forge` is a different beast that
+// ForgeGradle 6 drives reliably -- it is also what the upstream Hex Casting
+// project uses -- so that module uses ForgeGradle instead of being forced
+// through Loom.
+//
+// The shared sources are folded in as *source directories* rather than as a
+// published `common` jar. That is what lets one set of .java files be compiled
+// by two unrelated build plugins (Loom and ForgeGradle) without either of them
+// needing to understand the other's project model.
+//
+// MAPPINGS: every module uses official (Mojang) mappings. The shared code
+// references vanilla classes by their Mojang names, so all four compilations
+// must resolve those names identically; mixing in Yarn somewhere would break
+// the shared source set. ForgeGradle gets official mappings natively, and Loom
+// modules ask for them explicitly.
+
+plugins {
+    // Declared here (apply false) so the version lives in one place.
+    id 'dev.architectury.loom' version "${architectury_loom_version}" apply false
+}
+
+allprojects {
+    apply plugin: 'java'
+    apply plugin: 'maven-publish'
+
+    group = project.maven_group
+    version = project.mod_version
+
+    repositories {
+        mavenCentral()
+
+        // Ordering matters here: Gradle aborts on a hard repository error (a TLS
+        // handshake failure is one) instead of falling through to the next repo,
+        // so the hosts that hold most artifacts are queried before the flakier
+        // general-purpose ones.
+        maven { name = 'BlameJared'; url = 'https://maven.blamejared.com' }
+        maven {
+            name = "Hexxy's Maven (everyone thank Kyra)"
+            url = 'https://maven.hexxy.media/'
+        }
+        maven { name = 'Fabric'; url = 'https://maven.fabricmc.net/' }
+        maven { name = 'Quilt'; url = 'https://maven.quiltmc.org/repository/release/' }
+        maven { name = 'Architectury'; url = 'https://maven.architectury.dev/' }
+        maven { name = 'MinecraftForge'; url = 'https://maven.minecraftforge.net/' }
+        maven { name = 'NeoForged'; url = 'https://maven.neoforged.net/releases/' }
+        maven {
+            name = 'Sponge'
+            url = 'https://repo.spongepowered.org/repository/maven-public/'
+            content { includeGroup 'org.spongepowered' }
+        }
+        maven { name = 'Shedaniel'; url = 'https://maven.shedaniel.me/' }
+        maven { name = 'TerraformersMC'; url = 'https://maven.terraformersmc.com/releases/' }
+        maven { name = 'Ladysnake'; url = 'https://maven.ladysnake.org/releases' }
+        maven { name = 'TheIllusiveC4'; url = 'https://maven.theillusivec4.top/' }
+        maven { name = 'JamiesWhiteShirt'; url = 'https://maven.jamieswhiteshirt.com/libs-release' }
+        maven { name = 'Devos'; url = 'https://mvn.devos.one/snapshots/' }
+        maven { name = 'ModMaven'; url = 'https://modmaven.dev' }
+        maven { name = 'Jitpack'; url = 'https://jitpack.io' }
+        maven {
+            name = 'Kotlin for Forge'
+            url = 'https://thedarkcolour.github.io/KotlinForForge/'
+        }
+        maven {
+            name = 'Sleeping Town'
+            url = 'https://repo.sleeping.town'
+            content { includeGroup 'com.unascribed' }
+        }
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = 'Modrinth'
+                    url = 'https://api.modrinth.com/maven'
+                }
+            }
+            filter { includeGroup 'maven.modrinth' }
+        }
+        // If you have mod jar dependencies in ./libs, declare them here.
+        flatDir {
+            name = 'localModLibs'
+            dir rootProject.file('libs')
+        }
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        it.options.encoding = 'UTF-8'
+        // Emit Java 17 bytecode even though the build runs on JDK 21: Minecraft
+        // 1.20.1 ships on Java 17, so a Java 21 class file would fail to load
+        // with UnsupportedClassVersionError. `release` also keeps the compile
+        // classpath pinned to the Java 17 API, so no 18+ API can slip in.
+        it.options.release = 17
+        it.options.compilerArgs << '-Xmaxerrs' << '1000'
+    }
+
+    java {
+        // JDK 21 drives the build. This is the language version Loom hands to
+        // its Forge/MCP tooling, so it must be a JDK Gradle can actually find:
+        // 21 is auto-detected on this machine and provisioned via the Foojay
+        // resolver elsewhere, so no installation path is hardcoded anywhere.
+        toolchain.languageVersion = JavaLanguageVersion.of(21)
+        withSourcesJar()
+    }
+
+    tasks.withType(Jar).configureEach {
+        if (name == 'sourcesJar') {
+            duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        }
+    }
+
+    // The generated module metadata includes mapped dependencies which are not
+    // reasonably consumable by other mod developers.
+    tasks.withType(GenerateModuleMetadata) {
+        enabled = false
+    }
+}
+
+// The root project is a container for the subprojects, not a published module,
+// so suppress the empty jar/sourcesJar it would otherwise emit into build/libs.
+tasks.matching { it.name in ['jar', 'sourcesJar'] }.configureEach {
+    enabled = false
+}
+
+// Every non-shared module compiles the shared sources into itself and stamps
+// its own loader metadata with the project version.
+//
+// Pointing at the directories directly (rather than at
+// `project(':common').sourceSets`, which is evaluation-order sensitive) keeps
+// this robust across the different build plugins involved.
+configure(subprojects.findAll { it.name != 'common' }) { platformProject ->
+    def sharedJava = rootProject.file('common/src/main/java')
+    def sharedResources = rootProject.file('common/src/main/resources')
+
+    sourceSets {
+        main {
+            java.srcDir sharedJava
+            resources.srcDir sharedResources
+        }
+    }
+
+    processResources {
+        inputs.property 'version', project.version
+
+        filesMatching('META-INF/mods.toml') {
+            expand 'version': project.version
+        }
+        filesMatching('fabric.mod.json') {
+            expand 'version': project.version
+        }
+        filesMatching('quilt.mod.json') {
+            expand 'version': project.version
+        }
+    }
+}

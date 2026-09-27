@@ -1,0 +1,76 @@
+// Legacy Forge (net.minecraftforge) platform module (Architectury Loom).
+//
+// ForgeGradle 6 is deliberately NOT used here. Its `Utils` static initializer
+// feeds "26.1-snapshot-1" to srgutils and throws NumberFormatException while the
+// plugin is being applied, which aborts the build before anything else runs.
+//
+// Architectury Loom drives this loader from a normal `loom.platform=forge`
+// project: it performs the MCP/userdev setup itself and reads the
+// `net.minecraftforge:forge` coordinate below. `platformSetupLoomIde`-style run
+// configs and the shared ../common sources come from the root build script.
+
+plugins {
+    id 'dev.architectury.loom'
+}
+
+base {
+    archivesName = "${archives_base_name}-forge"
+}
+
+loom {
+    mixin {
+        defaultRefmapName = "${mod_id}.forge.refmap.json"
+    }
+    forge {
+        // Every mixin config this jar should load. Duplicated in ../neoforge
+        // because the two modules are separate Loom projects.
+        mixinConfig "${mod_id}.mixins.json"
+        mixinConfig "${mod_id}.forge.mixins.json"
+    }
+
+    runs {
+        client {
+            client()
+            setConfigName('Forge Client')
+            runDir 'run'
+        }
+        server {
+            server()
+            setConfigName('Forge Server')
+            runDir 'run-server'
+        }
+        configureEach {
+            ideConfigGenerated(true)
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    // Official (Mojang) mappings, matching every other module so the shared
+    // source set resolves vanilla names identically everywhere.
+    mappings loom.officialMojangMappings()
+
+    // Legacy Forge. Note this is `net.minecraftforge`, NOT `net.neoforged`
+    // (which ../neoforge uses); on 1.20.1 the two are separate releases.
+    forge "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}"
+
+    // ---------------------------------------------------------------------
+    // Hex Casting and its Forge stack.
+    // ---------------------------------------------------------------------
+    modImplementation("at.petra-k.hexcasting:hexcasting-forge-${project.minecraft_version}:${project.hexcasting_version}") {
+        transitive = false
+    }
+    modImplementation "vazkii.patchouli:Patchouli:${project.minecraft_version}-${project.patchouli_version}-FORGE"
+    modImplementation "me.shedaniel.cloth:cloth-config-forge:${project.clothconfig_version}"
+    modImplementation("top.theillusivec4.curios:curios-forge:${project.curios_version}") { transitive = false }
+    modImplementation("top.theillusivec4.caelus:caelus-forge:3.2.0+1.20.1") { transitive = false }
+    modImplementation "at.petra-k.paucal:paucal-forge-${project.minecraft_version}:${project.paucal_version}"
+    modImplementation("com.samsthenerd.inline:inline-forge:${project.inline_version}") { transitive = false }
+
+    // Hex Casting's Forge build is Kotlin, so its runtime is required to launch.
+    modRuntimeOnly "thedarkcolour:kotlinforforge:4.12.0"
+
+    // Neither Forge nor NeoForge 1.20.1 bundles MixinExtras.
+    modImplementation(include("io.github.llamalad7:mixinextras-forge:${project.mixin_extras_version}"))
+}

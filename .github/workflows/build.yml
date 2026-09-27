@@ -1,0 +1,51 @@
+name: Build
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # The JDK that runs the build. It must satisfy the Gradle Java toolchain
+  # declared in build.gradle (Java 21). Compiled output is still Java 17
+  # bytecode, because `options.release = 17` -- that is what Minecraft 1.20.1
+  # requires at runtime.
+  JAVA_VERSION: 21
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build all platform jars
+        run: |
+          chmod +x gradlew
+          ./gradlew build --stacktrace
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist
+          for platform in fabric quilt forge neoforge; do
+            cp "$platform"/build/libs/*.jar dist/
+          done
+          # The sources jars are not release artifacts.
+          rm -f dist/*-sources.jar
+          ls -l dist
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hexisle-build
+          path: dist
+          retention-days: 30

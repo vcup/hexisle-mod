@@ -1,0 +1,37 @@
+# gradle
+build
+.gradle
+out
+classes
+
+# idea
+.idea
+*.iml
+*.ipr
+*.iws
+
+# eclipse
+bin
+*.launch
+.settings
+.metadata
+.classpath
+.project
+
+# vscode
+# (.vscode/settings.json and extensions.json are intentionally committed)
+
+# run directories
+run
+run-server
+run-client
+
+# datagen cache
+.cache/
+*/src/generated/resources/.cache/
+
+# misc
+.DS_Store
+*.log
+logs/
+*.zip

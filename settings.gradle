@@ -1,0 +1,30 @@
+pluginManagement {
+    repositories {
+        // Architectury Loom is the toolchain used by every platform module. Its
+        // plugin marker and the Architectury Gradle plugin both live here.
+        maven { name = 'Architectury'; url = 'https://maven.architectury.dev/' }
+        maven { name = 'Fabric'; url = 'https://maven.fabricmc.net/' }
+        maven { name = 'Quilt'; url = 'https://maven.quiltmc.org/repository/release/' }
+        maven { name = 'NeoForged'; url = 'https://maven.neoforged.net/releases/' }
+        maven { name = 'Sponge'; url = 'https://repo.spongepowered.org/repository/maven-public/' }
+        // Fallback for plugin markers when the Plugin Portal is flaky.
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+// The build runs on JDK 21 (see the Java toolchain in build.gradle). Gradle
+// locates it by auto-detection where it is installed normally; this resolver
+// lets the toolchain be provisioned on demand otherwise, so no JDK installation
+// path is hardcoded in this repository.
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
+rootProject.name = 'hexisle'
+
+include 'common'
+include 'fabric'
+include 'quilt'
+include 'forge'
+include 'neoforge'

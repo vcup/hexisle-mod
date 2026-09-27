@@ -1,0 +1,31 @@
+modLoader = "javafml"
+loaderVersion = "[47,)"
+license = "MIT"
+
+[[mods]]
+modId = "hexisle"
+version = "${version}"
+displayName = "hexisle"
+description = "A Hex Casting addon for Minecraft 1.20.1."
+authors = "vcup"
+
+[[dependencies.hexisle]]
+modId = "forge"
+mandatory = true
+versionRange = "[47,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.hexisle]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.20.1,1.21)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.hexisle]]
+modId = "hexcasting"
+mandatory = true
+versionRange = "[0.11.0,)"
+ordering = "NONE"
+side = "BOTH"

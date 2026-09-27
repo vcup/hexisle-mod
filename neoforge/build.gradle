@@ -1,0 +1,67 @@
+// NeoForge platform module (Architectury Loom).
+//
+// On Minecraft 1.20.1 NeoForge is published as `net.neoforged:forge` and keeps
+// the `net.minecraftforge.*` packages and the "forge" mod id, so Architectury
+// Loom drives it through its `forge` platform -- only the dependency coordinate
+// differs from ../forge. This is Architectury's documented 1.20.1 path:
+// https://docs.architectury.dev/loom/using_neo
+
+plugins {
+    id 'dev.architectury.loom'
+}
+
+base {
+    archivesName = "${archives_base_name}-neoforge"
+}
+
+loom {
+    mixin {
+        defaultRefmapName = "${mod_id}.neoforge.refmap.json"
+    }
+    forge {
+        mixinConfig "${mod_id}.mixins.json"
+        mixinConfig "${mod_id}.neoforge.mixins.json"
+    }
+
+    runs {
+        client {
+            client()
+            setConfigName('NeoForge Client')
+            runDir 'run'
+        }
+        server {
+            server()
+            setConfigName('NeoForge Server')
+            runDir 'run-server'
+        }
+        configureEach {
+            ideConfigGenerated(true)
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
+
+    // NeoForge for 1.20.1. The hexisle pack runs exactly this version.
+    forge "net.neoforged:forge:${project.neoforge_version}"
+
+    // ---------------------------------------------------------------------
+    // Hex Casting and its Forge-side stack. The pack ships the Forge builds of
+    // all of these, so the NeoForge build links against the same artifacts.
+    // ---------------------------------------------------------------------
+    modImplementation("at.petra-k.hexcasting:hexcasting-forge-${project.minecraft_version}:${project.hexcasting_version}") {
+        transitive = false
+    }
+    modImplementation "vazkii.patchouli:Patchouli:${project.minecraft_version}-${project.patchouli_version}-FORGE"
+    modImplementation "me.shedaniel.cloth:cloth-config-forge:${project.clothconfig_version}"
+    modImplementation("top.theillusivec4.curios:curios-forge:${project.curios_version}") { transitive = false }
+    modImplementation("top.theillusivec4.caelus:caelus-forge:3.2.0+1.20.1") { transitive = false }
+    modImplementation "at.petra-k.paucal:paucal-forge-${project.minecraft_version}:${project.paucal_version}"
+    modImplementation("com.samsthenerd.inline:inline-forge:${project.inline_version}") { transitive = false }
+
+    modRuntimeOnly "thedarkcolour:kotlinforforge:4.12.0"
+
+    modImplementation(include("io.github.llamalad7:mixinextras-forge:${project.mixin_extras_version}"))
+}
